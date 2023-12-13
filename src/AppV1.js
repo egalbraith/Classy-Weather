@@ -18,14 +18,6 @@ function getWeatherIcon(wmoCode) {
   return icons.get(arr);
 }
 
-function convertToFlag(countryCode) {
-  const codePoints = countryCode
-    .toUpperCase()
-    .split("")
-    .map((char) => 127397 + char.charCodeAt());
-  return String.fromCodePoint(...codePoints);
-}
-
 function formatDay(dateStr) {
   return new Intl.DateTimeFormat("en", {
     weekday: "short",
@@ -33,19 +25,20 @@ function formatDay(dateStr) {
 }
 
 class App extends React.Component {
-  state = {
-    location: "",
-    isLoading: false,
-    displayLocation: "",
-    weather: {},
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      location: "Philadelphia",
+      isLoading: false,
+      displayLocation: "",
+      weather: {},
+    };
+    this.fetchWeather = this.fetchWeather.bind(this);
+  }
 
-  fetchWeather = async () => {
-    if (this.state.location.length < 2) return this.setState({ weather: {} });
-
+  async fetchWeather() {
     try {
       this.setState({ isLoading: true });
-
       // 1) Getting location (geocoding)
       const geoRes = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${this.state.location}`
@@ -57,9 +50,8 @@ class App extends React.Component {
 
       const { latitude, longitude, timezone, name, country_code } =
         geoData.results.at(0);
-
       this.setState({
-        displayLocation: `${name} ${convertToFlag(country_code)}`,
+        displayLocation: `${name}`,
       });
 
       // 2) Getting actual weather
@@ -73,37 +65,22 @@ class App extends React.Component {
     } finally {
       this.setState({ isLoading: false });
     }
-  };
-
-  setLocation = (e) => this.setState({ location: e.target.value });
-
-  // useEffect []
-  componentDidMount() {
-    // this.fetchWeather();
-
-    this.setState({ location: localStorage.getItem("location") || "" });
-  }
-
-  // useEffect [location]
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.location !== prevState.location) {
-      this.fetchWeather();
-
-      localStorage.setItem("location", this.state.location);
-    }
   }
 
   render() {
     return (
       <div className="app">
         <h1>Classy Weather</h1>
-        <Input
-          location={this.state.location}
-          onChangeLocation={this.setLocation}
-        />
-
+        <div>
+          <input
+            value={this.state.location}
+            type="text"
+            placeholder="Search for location..."
+            onChange={(e) => this.setState({ location: e.target.value })}
+          />
+        </div>
+        <button onClick={this.fetchWeather}>Get Weather</button>
         {this.state.isLoading && <p className="loader">Loading...</p>}
-
         {this.state.weather.weathercode && (
           <Weather
             weather={this.state.weather}
@@ -117,26 +94,7 @@ class App extends React.Component {
 
 export default App;
 
-class Input extends React.Component {
-  render() {
-    return (
-      <div>
-        <input
-          type="text"
-          placeholder="Search from location..."
-          value={this.props.location}
-          onChange={this.props.onChangeLocation}
-        />
-      </div>
-    );
-  }
-}
-
 class Weather extends React.Component {
-  componentWillUnmount() {
-    console.log("Weather will unmount");
-  }
-
   render() {
     const {
       temperature_2m_max: max,
@@ -147,7 +105,7 @@ class Weather extends React.Component {
 
     return (
       <div>
-        <h2>Weather {this.props.location}</h2>
+        <h2>Weather for {this.props.location}</h2>
         <ul className="weather">
           {dates.map((date, i) => (
             <Day
@@ -168,7 +126,6 @@ class Weather extends React.Component {
 class Day extends React.Component {
   render() {
     const { date, max, min, code, isToday } = this.props;
-
     return (
       <li className="day">
         <span>{getWeatherIcon(code)}</span>
